@@ -4,7 +4,7 @@
 #pragma region license
 /***
 *	BSD 3-Clause License
-	Copyright (c) 2021, 2022 Alex
+	Copyright (c) 2021, 2022, 2023 Alex
 	All rights reserved.
 	Redistribution and use in source and binary forms, with or without
 	modification, are permitted provided that the following conditions are met:
@@ -215,6 +215,8 @@ bool DataFile::Read(DataFile& dataFile, const std::string& sFileName)
 
 		if (!sLine.empty())
 			Trim(sLine);
+
+		sLine = sLine.substr(0, sLine.find_first_of('#'));
 
 		if (!sLine.empty())
 		{
