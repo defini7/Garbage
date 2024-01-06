@@ -107,9 +107,7 @@ def accomodations_no_repeat(k, n):
     return factorial(n) // factorial(n - k)
 
 
-#    (n + k - 1)!
-#   ---------------
-#    (n - 1)! * k!
+# n ^ k
 def accomodations_repeat(k, n):
     """
     >>> accomodations_repeat(8, 62)
