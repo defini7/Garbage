@@ -4,7 +4,7 @@
 #pragma region license
 /***
 *	BSD 3-Clause License
-	Copyright (c) 2021, 2022, 2023 Alex
+	Copyright (c) 2021, 2022, 2023, 2024 Alex
 	All rights reserved.
 	Redistribution and use in source and binary forms, with or without
 	modification, are permitted provided that the following conditions are met:
@@ -49,17 +49,17 @@ public:
 	~DataFile() = default;
 
 public:
-	void SetString(const std::string& sValue, size_t idx = 0);
-	std::string String(size_t idx = 0) const;
+	void SetString(const std::string& sValue, size_t nIndex = 0);
+	std::string GetString(size_t nIndex = 0) const;
 
-	void SetInt(long long nValue, size_t idx = 0);
-	long long Int(size_t idx = 0) const;
+	void SetInt(long long nValue, size_t nIndex = 0);
+	long long GetInt(size_t nIndex = 0) const;
 
-	void SetDecimal(long double dValue, size_t idx = 0);
-	long double Decimal(size_t idx = 0) const;
+	void SetDecimal(long double dValue, size_t nIndex = 0);
+	long double GetDecimal(size_t nIndex = 0) const;
 
-	void SetBool(const bool bValue, size_t idx = 0);
-	bool Bool() const;
+	void SetBool(bool bValue, size_t nIndex = 0);
+	bool GetBool() const;
 
 	bool HasProperty(const std::string& sName) const;
 
@@ -84,107 +84,113 @@ private:
 #ifdef DATA_FILE_IMPL
 #undef DATA_FILE_IMPL
 
-void DataFile::SetString(const std::string& sValue, size_t idx)
+void DataFile::SetString(const std::string& sValue, size_t nIndex)
 {
-	if (idx >= m_vValues.size())
-		m_vValues.resize(idx + 1);
+	if (nIndex >= m_vValues.size())
+		m_vValues.resize(nIndex + 1);
 
-	m_vValues[idx] = sValue;
+	m_vValues[nIndex] = sValue;
 }
 
-std::string DataFile::String(size_t idx) const
+std::string DataFile::GetString(size_t nIndex) const
 {
-	return m_vValues[idx];
+	return m_vValues[nIndex];
 }
 
-void DataFile::SetInt(long long nValue, size_t idx)
+void DataFile::SetInt(long long nValue, size_t nIndex)
 {
-	SetString(std::to_string(nValue), idx);
+	SetString(std::to_string(nValue), nIndex);
 }
 
-long long DataFile::Int(size_t idx) const
+long long DataFile::GetInt(size_t nIndex) const
 {
-	return std::stoll(String(idx));
+	return std::stoll(GetString(nIndex));
 }
 
-void DataFile::SetDecimal(long double dValue, size_t idx)
+void DataFile::SetDecimal(long double dValue, size_t nIndex)
 {
-	SetString(std::to_string(dValue), idx);
+	SetString(std::to_string(dValue), nIndex);
 }
 
-long double DataFile::Decimal(size_t idx) const
+long double DataFile::GetDecimal(size_t nIndex) const
 {
-	return std::stold(String(idx));
+	return std::stold(GetString(nIndex));
 }
 
-void DataFile::SetBool(const bool bValue, size_t idx)
+void DataFile::SetBool(bool bValue, size_t nIndex)
 {
-	SetString(std::to_string((int)bValue), idx);
+	SetString(std::to_string((int)bValue), nIndex);
 }
 
-bool DataFile::Bool() const
+bool DataFile::GetBool() const
 {
-	return (bool)std::stoll(String());
+	return (bool)std::stoll(GetString());
 }
 
-bool DataFile::HasProperty(const std::string& name) const
+bool DataFile::HasProperty(const std::string& sName) const
 {
-	return m_mapObjects.count(name) > 0;
+	return m_mapObjects.count(sName) > 0;
 }
 
-DataFile& DataFile::operator[](const std::string& key)
+DataFile& DataFile::operator[](const std::string& sKey)
 {
-	if (m_mapObjects.count(key) == 0)
+	if (m_mapObjects.count(sKey) == 0)
 	{
-		m_mapObjects[key] = m_vObjects.size();
-		m_vObjects.push_back({ key, DataFile() });
+		m_mapObjects[sKey] = m_vObjects.size();
+		m_vObjects.push_back({ sKey, DataFile() });
 	}
 
-	return m_vObjects[m_mapObjects[key]].second;
+	return m_vObjects[m_mapObjects[sKey]].second;
 }
 
 bool DataFile::Write(DataFile& dataFile, const std::string& sFileName)
 {
 	std::function<void(std::ofstream&, DataFile&, size_t)> Write = [&](std::ofstream& os, DataFile& df, size_t tabs)
-	{
-		auto AddTabs = [&]()
 		{
-			for (size_t i = 0; i < tabs; i++)
-				os << '\t';
-		};
-
-		for (auto& obj : df.m_vObjects)
-		{
-			AddTabs();
-
-			if (obj.second.m_vObjects.empty())
-			{
-				os << obj.first << " = ";
-
-				auto& values = obj.second.m_vValues;
-				for (size_t i = 0; i < values.size(); i++)
+			auto AddTabs = [&]()
 				{
-					os << values[i];
-					os << ((i == values.size() - 1) ? ";\n" : ", ");
+					for (size_t i = 0; i < tabs; i++)
+						os << '\t';
+				};
+
+			for (auto& obj : df.m_vObjects)
+			{
+				AddTabs();
+
+				if (obj.second.m_vObjects.empty())
+				{
+					os << obj.first << " = ";
+
+					auto& values = obj.second.m_vValues;
+					for (size_t i = 0; i < values.size(); i++)
+					{
+						os << values[i];
+
+						if (i == values.size() - 1)
+							os << ";\n";
+						else
+							os << ", ";
+					}
+				}
+				else
+				{
+					os << obj.first << "\n";
+
+					AddTabs();
+					os << "{\n";
+
+					Write(os, obj.second, tabs + 1);
+
+					AddTabs();
+					os << "}\n";
 				}
 			}
-			else
-			{
-				os << obj.first << "\n";
-
-				AddTabs();
-				os << "{\n";
-
-				Write(os, obj.second, tabs + 1);
-
-				AddTabs();
-				os << "}\n";
-			}
-		}
-	};
+		};
 
 	std::ofstream file(sFileName);
-	if (!file.is_open()) return false;
+
+	if (!file.is_open())
+		return false;
 
 	Write(file, dataFile, 0);
 	file.close();
@@ -195,13 +201,15 @@ bool DataFile::Write(DataFile& dataFile, const std::string& sFileName)
 bool DataFile::Read(DataFile& dataFile, const std::string& sFileName)
 {
 	auto Trim = [](std::string& s)
-	{
-		s.erase(0, s.find_first_not_of(" \t\n\r\f\v"));
-		s.erase(s.find_last_not_of(" \t\n\r\f\v") + 1);
-	};
+		{
+			s.erase(0, s.find_first_not_of(" \t\n\r\f\v"));
+			s.erase(s.find_last_not_of(" \t\n\r\f\v") + 1);
+		};
 
 	std::ifstream file(sFileName);
-	if (!file.is_open()) return false;
+
+	if (!file.is_open())
+		return false;
 
 	std::string sFieldName, sFieldValue;
 
@@ -221,7 +229,20 @@ bool DataFile::Read(DataFile& dataFile, const std::string& sFileName)
 		if (!sLine.empty())
 		{
 			size_t i = sLine.find_first_of('=');
-			if (i != std::string::npos)
+
+			if (i == std::string::npos)
+			{
+				if (sLine.front() == '{')
+					stack.push(stack.top().get()[sFieldName]);
+				else
+				{
+					if (sLine.back() == '}')
+						stack.pop();
+					else
+						sFieldName = sLine;
+				}
+			}
+			else
 			{
 				sFieldName = sLine.substr(0, i);
 				Trim(sFieldName);
@@ -253,7 +274,7 @@ bool DataFile::Read(DataFile& dataFile, const std::string& sFileName)
 								vecTokens.clear();
 							}
 							else if (c == ',')
-								vecTokens.push_back("");
+								vecTokens.push_back({});
 							else
 								vecTokens.back() += c;
 						}
@@ -262,32 +283,20 @@ bool DataFile::Read(DataFile& dataFile, const std::string& sFileName)
 
 				if (!vecTokens.empty())
 				{
-					for (size_t idx = 0; idx < vecTokens.size(); idx++)
+					for (size_t j = 0; j < vecTokens.size(); j++)
 					{
-						Trim(vecTokens[idx]);
-						stack.top().get()[sFieldName].SetString(vecTokens[idx], idx);
+						Trim(vecTokens[j]);
+						stack.top().get()[sFieldName].SetString(vecTokens[j], j);
 					}
 
 					vecTokens.clear();
 				}
 			}
-			else
-			{
-				if (sLine.front() == '{')
-					stack.push(stack.top().get()[sFieldName]);
-				else
-				{
-					if (sLine.back() == '}')
-						stack.pop();
-					else
-						sFieldName = sLine;
-				}
-			}
-
 		}
 	}
 
 	file.close();
+
 	return true;
 }
 
