@@ -4,19 +4,19 @@ import shutil
 
 
 class Command:
-    def __init__(self, tool: str):
+    def __init__(self, tool: str, arguments=None):
         self.tool = tool
-        self.arguments = []
+        self.arguments = arguments if arguments else []
 
     def add_argument(self, argument: str):
         self.arguments.append(argument)
 
-    def add_flag(self, flag: str, value: str | None = None):
+    def add_flag(self, flag: str, value: str | None = None, omit_equals=False):
         arg = '-' + flag
 
         if value:
-            arg += '=' + value
-        
+            arg += (' ' if omit_equals else '=') + value
+
         self.arguments.append(arg)
 
     def combine(self, cmd):
@@ -36,10 +36,8 @@ class Builder:
     def add_command(self, command: Command):
         self.commands.append(command)
 
-    def execute(self, show_stdout=False, show_stderr=False, show_prompt=False):
-        for command in self.commands:
-            prompt = f'{command.tool} {" ".join(command.arguments)}'
-
+    def execute(self, show_stdout=False, show_stderr=False, show_prompt=False, all_at_once=False):
+        def exec(prompt):
             if show_prompt:
                 print(prompt)
 
@@ -50,6 +48,12 @@ class Builder:
 
             if show_stderr and len(run.stderr) > 0:
                 print(run.stderr.decode(errors='ignore'))
+
+        if all_at_once:
+            exec(' & '.join([f'{c.tool} {" ".join(c.arguments)}' for c in self.commands]))
+        else:
+            for command in self.commands:
+                exec(f'{command.tool} {" ".join(command.arguments)}')
 
 
 def is_dir(path: str) -> bool:
@@ -98,5 +102,13 @@ def get_path_base(path: str):
     return os.path.basename(path)
 
 
-def copy(source: str, dest: str, is_source_local=True, is_dest_local=True):
-    shutil.copy2(fix_path(source, is_source_local), fix_path(dest, is_dest_local))
+def _copy(source: str, dest: str, is_source_local=True, is_dest_local=True, func=None):
+    func(fix_path(source, is_source_local), fix_path(dest, is_dest_local))
+
+
+def copy_file(source: str, dest: str, is_source_local=True, is_dest_local=True):
+    _copy(source, dest, is_source_local, is_dest_local, shutil.copy2)
+
+
+def copy_dirs(source: str, dest: str, is_source_local=True, is_dest_local=True):
+    _copy(source, dest, is_source_local, is_dest_local, os.rename)
