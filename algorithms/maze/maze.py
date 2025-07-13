@@ -1,23 +1,44 @@
+from enum import Enum
+
+
+Coord = tuple[int, int]
+
+class Algo(Enum):
+    BFS = 0
+    DFS = 1
+
+
 DIRS = [(1, 0), (0, 1), (-1, 0), (0, -1)]
 
 
 class Node:
-    def __init__(self, state, parent=None):
+    def __init__(self, state: Coord, parent=None):
         self.state = state
         self.parent = parent
+        
+
+class AStarNode(Node):
+    def __init__(self, state: Coord, parent=None):
+        super().__init__(state, parent)
+
+        # Distance from the S point to that node
+        self.local_dist = float('+inf')
+
+        # self.local_dist + distance to the G node
+        self.global_dist = float('+inf')
 
 
 class StackFrontier:
     def __init__(self):
         self.data = []
 
-    def contains(self, state: tuple[int, int]):
+    def contains(self, state: Coord):
         return any(state == n.state for n in self.data)
 
-    def push(self, value: Node):
+    def push(self, value):
         self.data.append(value)
 
-    def pop(self) -> Node:
+    def pop(self):
         return self.data.pop()
     
     def empty(self):
@@ -25,8 +46,15 @@ class StackFrontier:
     
 
 class QueueFrontier(StackFrontier):
-    def pop(self) -> Node:
+    def pop(self):
         return self.data.pop(0)
+    
+
+def heuristic(state1: Coord, state2: Coord) -> int:
+    # Let's use the manhattan distance as a heuristic
+
+    (x1, y1), (x2, y2) = state1, state2
+    return abs(x2 - x1) + abs(y2 - y1)
 
     
 class Maze:
@@ -62,7 +90,7 @@ class Maze:
 
             self.obstacles.append(row)
         
-    def find_new_states(self, state) -> list[tuple[int, int]]:
+    def find_new_states(self, state: Coord) -> list[Coord]:
         x, y = state
         states = []
 
@@ -85,7 +113,7 @@ class Maze:
 
     # In the informed search we would also take into account a
     # position of the goal node
-    def uninformed_search(self):
+    def uninformed_search(self, algo: Algo):
         self.explored_count = 0
 
         # The frontier is a data structure that can be either a stack or a queue,
@@ -98,7 +126,11 @@ class Maze:
         # The "real world" difference is that in the unweighted graph (that we have) it IS guaranteed
         # that BFS will find the shortest path to the goal but there is NO guarantee that BFS will be faster
         # than DFS or vice-versa. So it's like a one-armed bandit
-        frontier = QueueFrontier() # StackFrontier()
+
+        match algo:
+            case Algo.BFS: frontier = QueueFrontier()
+            case Algo.DFS: frontier = StackFrontier()
+            case _: raise Exception('The specified algorithm type is corrupted')
 
         # We want to avoid visiting cells more than once
         # so let's keep track of them, this approach is called "revised"
@@ -107,12 +139,7 @@ class Maze:
         # Push the first cell into the frontier
         frontier.push(Node(self.start))
 
-        while True:
-            if frontier.empty():
-                # The frontier is empty and we haven't found our path yet
-                # so there is no path
-                return False
-            
+        while not frontier.empty():
             # Taking a node from the frontier
             node = frontier.pop()
 
@@ -135,6 +162,82 @@ class Maze:
                 if s not in visited and not frontier.contains(s):
                     frontier.push(Node(s, node))
 
+        # The frontier is empty and we haven't found our path yet
+        # so there is no path
+        return False
+
+    def astar_search(self):
+        self.explored_count = 0
+
+        frontier = QueueFrontier()
+        frontier.push(AStarNode(self.start))
+
+        visited = set()
+        goal_node = None
+
+        while not frontier.empty():
+            node = frontier.pop()
+
+            if node.state == self.goal:
+                # We've reached the goal but it is not
+                # guaranteed that the found path is the shortest one
+                # so let's try to find another one
+                pass
+
+            visited.add(node.state)
+            self.explored_count += 1
+
+            dist_to_neighbour = node.local_dist + 1
+
+            # Store the goal node so it comes in handly later
+            if goal_node is None and node.state == self.goal:
+                goal_node = node
+
+            # Exploring all neighbours of the current node
+            for s in self.find_new_states(node.state):
+                # We don't want to explore already visited nodes
+                if s in visited:
+                    continue
+
+                n = AStarNode(s, node)
+
+                # If the distance of the neighbour from the S node is
+                # less than the distance from our current node then ...
+                if dist_to_neighbour < n.local_dist:
+                    # ... we update the neighbour's parent, its distance to the S node
+                    # and its global distance = distance to the S node + distance to the G node
+                    n.parent = node
+                    n.local_dist = dist_to_neighbour
+                    n.global_dist = n.local_dist + heuristic(s, self.goal)
+
+                frontier.push(n)
+
+            # Sorting the frontier by the global goal in descending order
+            # so on the next iteration we pick the nearest
+            # node to the G node (according to the heuristic function)
+            frontier.data.sort(key=lambda n: n.global_dist)
+
+        # The frontier is empty so let's see if our algorithm has found a path,
+        # we do that by try going back to the S node from the G node
+
+        self.solution.clear()
+
+        # If for whatever reason we haven't found the G node
+        # then just assume there is no path
+        if goal_node is None:
+            return False
+        
+        node = goal_node
+
+        while node.parent:
+            self.solution.insert(0, node.state)
+            node = node.parent
+
+        # Checking if we've reached the start so that means
+        # that the path was found and now it is guaranteed to be shortest one
+        return node.state == self.start # type: ignore
+
+
     def print(self):
         for y in range(self.height):
             for x, obstacle in enumerate(self.obstacles[y]):
@@ -151,12 +254,12 @@ class Maze:
             print()
 
 
-maze = Maze('maze1.txt')
+maze = Maze('maze3.txt')
 
 print('Before:')
 maze.print()
 
-maze.uninformed_search()
+maze.astar_search()
 print()
 print('Explored: ', maze.explored_count)
 
