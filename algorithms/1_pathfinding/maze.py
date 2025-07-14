@@ -167,6 +167,23 @@ class Maze:
         # The frontier is empty and we haven't found our path yet
         # so there is no path
         return False
+    
+    # AStar is a type of informed search algorithm because it knows the position
+    # of each node in a graph and especially the position of its goal.
+
+    # The approach here is to use the same GBFS algorithm as before but now we don't
+    # choose the node to go next only relying on the heuristic function, now we also
+    # take into the account an amount of steps that it took us to get to the cell
+    # that we are about to visit, so on each iteration we calculate a distance to each neighbour
+    # of the node taken from the frontier and see if the amount of steps that took us to get to
+    # the neighbour from our current cell is less than the number of steps that took use to get
+    # to the same neighbour previously from another node we update the neighbour's number of steps
+    # from the beginning to get to that specific state (let's call that number - local distance),
+    # so then we also update its global distance, i.e. the local distance + the heuristic of that
+    # neighbouring node and the goal node and then if we haven't visited that neighbour yet we
+    # add it to the frontier but at the end of the iteration of the loop it's very important to
+    # set move the node with the minimum global distance to the front of the queue so we can
+    # explore the nearest node to the goal (according to the heuristic function) firstly.
 
     def astar_search(self):
         self.explored_count = 0
@@ -279,8 +296,3 @@ maze.print()
 
 # Now we can try a different approach: let's take into account not only the heuristic but also a number of
 # steps that it requires to get to the point with that heuristic, this algorithm is called A* (A-star).
-
-# Let the heuristic be h(n) and the number of steps be g(n), let's explore their sum: h(n) + g(n).
-# Now let's start from the initial state and go deeper into the maze. In BFS we were choosing the next node
-# to explore in a random direction but in this case we will choose it based on h(n) + g(n) value for each node
-# by choosing the minimum of them.
