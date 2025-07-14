@@ -18,14 +18,16 @@ class Node:
         
 
 class AStarNode(Node):
-    def __init__(self, state: Coord, parent=None):
+    def __init__(self, state: Coord, parent=None, local_dist=float('+inf'), global_dist=float('+inf')):
         super().__init__(state, parent)
 
         # Distance from the S point to that node
-        self.local_dist = float('+inf')
+        self.local_dist = local_dist
 
         # self.local_dist + distance to the G node
-        self.global_dist = float('+inf')
+        self.global_dist = global_dist
+        
+        self.visited = False
 
 
 class StackFrontier:
@@ -170,35 +172,33 @@ class Maze:
         self.explored_count = 0
 
         frontier = QueueFrontier()
-        frontier.push(AStarNode(self.start))
+        frontier.push(AStarNode(self.start, local_dist=0, global_dist=heuristic(self.start, self.goal)))
 
         visited = set()
-        goal_node = None
 
         while not frontier.empty():
             node = frontier.pop()
 
             if node.state == self.goal:
-                # We've reached the goal but it is not
-                # guaranteed that the found path is the shortest one
-                # so let's try to find another one
-                pass
+                # We've reached the goal and the found path
+                # is the shortest one
+
+                self.solution.clear()
+
+                # Lets construct the path
+                while node.parent:
+                    self.solution.insert(0, node.state)
+                    node = node.parent
+
+                return True
 
             visited.add(node.state)
             self.explored_count += 1
 
             dist_to_neighbour = node.local_dist + 1
 
-            # Store the goal node so it comes in handly later
-            if goal_node is None and node.state == self.goal:
-                goal_node = node
-
             # Exploring all neighbours of the current node
             for s in self.find_new_states(node.state):
-                # We don't want to explore already visited nodes
-                if s in visited:
-                    continue
-
                 n = AStarNode(s, node)
 
                 # If the distance of the neighbour from the S node is
@@ -210,32 +210,22 @@ class Maze:
                     n.local_dist = dist_to_neighbour
                     n.global_dist = n.local_dist + heuristic(s, self.goal)
 
-                frontier.push(n)
+                # We don't want to explore already visited nodes and we don't want to explore nodes
+                # that are already must be explored
+                if s not in visited and not frontier.contains(s):
+                    frontier.push(n)
 
             # Sorting the frontier by the global goal in descending order
             # so on the next iteration we pick the nearest
             # node to the G node (according to the heuristic function)
-            frontier.data.sort(key=lambda n: n.global_dist)
+            #frontier.data.sort(key=lambda n: n.global_dist)
 
-        # The frontier is empty so let's see if our algorithm has found a path,
-        # we do that by try going back to the S node from the G node
+            # ... or we can find the minima in the frontier and move it into the front
+            if not frontier.empty():
+                minima = min(frontier.data, key=lambda n: n.global_dist)
 
-        self.solution.clear()
-
-        # If for whatever reason we haven't found the G node
-        # then just assume there is no path
-        if goal_node is None:
-            return False
-        
-        node = goal_node
-
-        while node.parent:
-            self.solution.insert(0, node.state)
-            node = node.parent
-
-        # Checking if we've reached the start so that means
-        # that the path was found and now it is guaranteed to be shortest one
-        return node.state == self.start # type: ignore
+                frontier.data.insert(0, minima)
+                frontier.data.remove(minima)
 
 
     def print(self):
@@ -254,7 +244,7 @@ class Maze:
             print()
 
 
-maze = Maze('maze3.txt')
+maze = Maze('maze5.txt')
 
 print('Before:')
 maze.print()
