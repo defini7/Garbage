@@ -74,7 +74,7 @@ class State:
 
         return res
     
-    def min_value(self) -> int:
+    def min_value(self, max_value: int, min_value: int) -> int:
         term = self.terminal()
 
         if term is not None:
@@ -92,11 +92,33 @@ class State:
             new_state = State(cur_state, Player.O)
 
             # Get the value of the next state and compare it
-            minima = min(minima, new_state.max_value())
+            minima = min(minima, new_state.max_value(max_value, min_value))
+
+            # HOWEVER, searching through all possible actions of the state is quite complex in terms
+            # of computations so we can use a technique called Alpha-Beta pruning that in this case
+            # allows us to upper-bound the value of the state based on the following actions of that state
+
+            # Example:
+            #            4                <- maximizer
+            #   4       <=3      <=2      <- minimizer
+            # 4 8 5    9 3 _    2 _ _     <- maximizer
+
+            # You can see that in this case we didn't calculate the value of the third state
+            # because we already have 3 that tells us that the minimum value of the previous state
+            # is less than 3 and we know that the first value of the minimizer state is 4 so
+            # we can be sure that we will pick at least 4 and in any case we won't pick the second action,
+            # the same thing applies to the third state, i.e. its value is less than 2 so it becomes obvious
+            # that we won't pick this path because we already have 4 as the first option (4 > 2)
+
+            # In this case we've found it
+            if minima <= max_value:
+                break
+
+            min_value = min(min_value, minima)
 
         return minima
 
-    def max_value(self) -> int:
+    def max_value(self, max_value: int, min_value: int) -> int:
         term = self.terminal()
 
         if term is not None:
@@ -114,7 +136,14 @@ class State:
             new_state = State(cur_state, Player.X)
 
             # Get the value of the next state and compare it
-            maxima = max(maxima, new_state.min_value())
+            maxima = max(maxima, new_state.min_value(max_value, min_value))
+
+            # The same Alpha-Beta pruning technique as in min_value method but now
+            # we apply it to the maximizer
+            if maxima >= min_value:
+                break
+
+            max_value = max(max_value, maxima)
 
         return maxima
 
@@ -125,9 +154,9 @@ class Game:
 
     def simulate(self):
         if self.state.turn == Player.X:
-            winner = self.state.min_value()
+            winner = self.state.min_value(-1, 1)
         else:
-            winner = self.state.max_value()
+            winner = self.state.max_value(-1, 1)
 
         match Player(winner):
             case Player.X: print('X won!')
@@ -155,5 +184,10 @@ def read_file(filename: str) -> list[str]:
         return [l[:-1] if l[-1] == '\n' else l for l in file.readlines()]
     
 
+# WARNING! Don't use a blank state as an initial state because remember
+# that there are 255168 possible states of tic-tac-toe game starting from the blank state
+
 g = Game(construct_raw_state(read_file('state3_o.txt')), Player.O)
 g.simulate()
+
+# TODO: print the winning strategy
