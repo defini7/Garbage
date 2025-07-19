@@ -261,17 +261,23 @@ class Maze:
             print()
 
 
-maze = Maze('maze5.txt')
+if __name__ == '__main__':
+    from sys import argv
 
-print('Before:')
-maze.print()
+    if len(argv) < 2:
+        print('Usage: python maze.py <file>')
 
-maze.astar_search()
-print()
-print('Explored: ', maze.explored_count)
+    maze = Maze(argv[1])
 
-print('\nAfter:')
-maze.print()
+    print('Before:')
+    maze.print()
+
+    maze.astar_search()
+    print()
+    print('Explored: ', maze.explored_count)
+
+    print('\nAfter:')
+    maze.print()
 
 # But the problem with the BFS and DFS algorithms is that
 # they can be slow because they are uninformed of the distance

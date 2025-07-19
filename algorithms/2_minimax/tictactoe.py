@@ -27,12 +27,6 @@ class State:
 
     # Returns the pair (x_won, o_won) or None if it is not a terminal state
     def terminal(self) -> Player | None:
-        # If some of the nodes are blank then the game hasn't been over yet
-        for y in range(3):
-            for x in range(3):
-                if self.data[y][x] == Player.N:
-                    return None
-
         # Since we mark X as -1 and O as 1 let's
         # just sum up all values for each direction on the board
         # and if the sum is -3 then X wins, if the sum is 3 then
@@ -59,6 +53,11 @@ class State:
         # Somebody can also win with a filled diagonal
         if -3 in (d1, d2): return Player.X
         if +3 in (d1, d2): return Player.O
+
+        if any(val == Player.N
+            for row in self.data
+            for val in row):
+            return None
         
         # It's a tie
         return Player.N
@@ -74,6 +73,7 @@ class State:
 
         return res
     
+    
     def min_value(self, max_value: int, min_value: int) -> int:
         term = self.terminal()
 
@@ -86,10 +86,10 @@ class State:
         # Find the lowest value among all actions since we are X
         for x, y in self.actions():
             # Build a new possible state
-            cur_state = deepcopy(self.data)
-            cur_state[y][x] = Player.X
+            new_data = deepcopy(self.data)
+            new_data[y][x] = Player.X
             
-            new_state = State(cur_state, Player.O)
+            new_state = State(new_data, Player.O)
 
             # Get the value of the next state and compare it
             minima = min(minima, new_state.max_value(max_value, min_value))
@@ -111,10 +111,10 @@ class State:
             # that we won't pick this path because we already have 4 as the first option (4 > 2)
 
             # In this case we've found it
+            min_value = min(min_value, minima)
+
             if minima <= max_value:
                 break
-
-            min_value = min(min_value, minima)
 
         return minima
 
@@ -130,20 +130,21 @@ class State:
         # Find the highest value among all actions since we are O
         for x, y in self.actions():
             # Build a new possible state
-            cur_state = deepcopy(self.data)
-            cur_state[y][x] = Player.O
+            new_data = deepcopy(self.data)
+            new_data[y][x] = Player.O
             
-            new_state = State(cur_state, Player.X)
+            new_state = State(new_data, Player.X)
 
             # Get the value of the next state and compare it
             maxima = max(maxima, new_state.min_value(max_value, min_value))
 
             # The same Alpha-Beta pruning technique as in min_value method but now
             # we apply it to the maximizer
-            if maxima >= min_value:
-                break
 
             max_value = max(max_value, maxima)
+
+            if maxima >= min_value:
+                break
 
         return maxima
 
@@ -187,7 +188,22 @@ def read_file(filename: str) -> list[str]:
 # WARNING! Don't use a blank state as an initial state because remember
 # that there are 255168 possible states of tic-tac-toe game starting from the blank state
 
-g = Game(construct_raw_state(read_file('state3_o.txt')), Player.O)
-g.simulate()
+if __name__ == '__main__':
+    from sys import argv, exit
+    
+    if len(argv) < 3:
+        print('Usage: python3 tictactoe.py <file> <winner>')
+        exit(1)
 
-# TODO: print the winning strategy
+    match argv[2].lower():
+        case 'x': winner = Player.X
+        case 'o': winner = Player.O
+        case _:
+            print('Invalid winner, possible values: X/x, O/o')
+            exit(1)
+
+
+    g = Game(construct_raw_state(read_file(argv[1])), winner)
+    g.simulate()
+
+    # TODO: print the winning strategy
