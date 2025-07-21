@@ -241,8 +241,8 @@ class Maze:
             if not frontier.empty():
                 minima = min(frontier.data, key=lambda n: n.global_dist)
 
-                frontier.data.insert(0, minima)
                 frontier.data.remove(minima)
+                frontier.data.insert(0, minima)
 
 
     def print(self):
@@ -262,10 +262,11 @@ class Maze:
 
 
 if __name__ == '__main__':
-    from sys import argv
+    from sys import argv, exit
 
     if len(argv) < 2:
         print('Usage: python maze.py <file>')
+        exit(1)
 
     maze = Maze(argv[1])
 
