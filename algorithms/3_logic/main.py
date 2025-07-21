@@ -18,22 +18,21 @@ for i, expr in enumerate(exprs):
     print(expr)
     print(repr(expr), end="\n\n")
 
-model = {
-    "P": True,
-    "Q": True
-}
-
 p = Symbol("P")
 q = Symbol("Q")
 
-# Modus ponens
+def check_entailement(*premises, query):
+    knowledge = And(*premises)
 
-expr = Implication(And(p, Implication(p, q)), q)
-print(expr)
-print(expr.eval(model))
+    result = "✓" if knowledge.entails(query) else "✘"
+
+    print(f"{Implication(knowledge, query)} {result}")
+
+# Modus ponens
+check_entailement(p, Implication(p, q), query=q)
 
 # Modul tollens
+check_entailement(Not(q), Implication(p, q), query=Not(p))
 
-expr = Implication(And(Not(q), Implication(p, q)), Not(p))
-print(expr)
-print(expr.eval(model))
+# Not an entailement
+check_entailement(Or(p, q), query=And(p, q))

@@ -15,6 +15,36 @@ class Expression:
         """ Returns all symbols from this expression """
         return set()
     
+    def entails(self, query) -> bool:
+        """ Ensures that entailement holds in all possible models """
+
+        def check(symbols, model):
+            if symbols:
+                remaining = symbols.copy()
+                s = remaining.pop()
+
+                true_model = model.copy()
+                true_model[s] = True
+
+                false_model = model.copy()
+                false_model[s] = False
+
+                return check(remaining, true_model) and check(remaining, false_model)
+            
+            # If there is no symbols then we've constructed a model
+
+            if self.eval(model):
+                # If the value of the antecedent is true
+                # then the consequent must also be true
+                return query.eval(model)
+            
+            # The value of the antecedent is false
+            # so the value of the consequent doesn't matter
+            return True
+
+        # Here we start constructing our models
+        return check(self.symbols() | query.symbols(), dict())
+
     @staticmethod
     def validate(obj):
         if not isinstance(obj, Expression):
@@ -96,7 +126,7 @@ class And(Expression):
         return f"And({args})"
     
     def symbols(self):
-        return set.union(c.symbols() for c in self.conjuncts)
+        return set.union(*[c.symbols() for c in self.conjuncts])
     
     def add(self, expr):
         Expression.validate(expr)
@@ -123,7 +153,7 @@ class Or(Expression):
         return f"Or({args})"
     
     def symbols(self):
-        return set.union(c.symbols() for c in self.disjuncts)
+        return set.union(*[c.symbols() for c in self.disjuncts])
     
     def add(self, expr):
         Expression.validate(expr)
